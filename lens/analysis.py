@@ -12,8 +12,9 @@ def explain(payload_json, model, _api_key):
     item_schema = {"type": "object", "additionalProperties": False,
                    "properties": {"what_changed": {"type": "string"}, "explanation": {"type": "string"},
                                   "confidence": {"type": "string", "enum": ["high", "medium", "low"]},
+                                  "supporting_quote": {"type": "string"},
                                   "source_ids": {"type": "array", "minItems": 1, "items": {"type": "string", "enum": source_ids}}},
-                   "required": ["what_changed", "explanation", "confidence", "source_ids"]}
+                   "required": ["what_changed", "explanation", "confidence", "source_ids", "supporting_quote"]}
     chart_schema = {"type": "object", "additionalProperties": False,
                     "properties": {name: item_schema for name in payload["charts"]}, "required": list(payload["charts"])}
     response_format = {"type": "json_object"}
@@ -33,11 +34,14 @@ def explain(payload_json, model, _api_key):
             "Say when evidence is insufficient. The EBITDA bridge is an arithmetic reconciliation, not operational attribution. "
             "Respond as JSON: {\"charts\": {\"exact chart name\": {\"what_changed\": \"1 sentence\", "
             "\"explanation\": \"2-3 concise sentences with [S1] style source IDs\", \"confidence\": \"high|medium|low\", "
-            "\"source_ids\": [\"S1\"]}}}. Include each supplied chart; do not include unavailable charts. "
+            "\"source_ids\": [\"S1\"], \"supporting_quote\": \"exact verbatim excerpt establishing a driver, or empty string\"}}}. Include each supplied chart; do not include unavailable charts. "
             "Every explanation must cite at least one supplied source ID in its text and source_ids. "
             "S1 is the corresponding filing and chart-data source. For EBITDA, endpoints are EBITDA, never net income; "
             "component_changes_USD are differences between periods, not absolute expenses. Do not reconstruct a net-income-to-EBITDA bridge. "
             "If sources do not establish a cause, explicitly say the cause cannot be established from this evidence. "
+            "The explanation must discuss documented operational drivers only, never repeat chart numbers or reconstruct arithmetic. "
+            "supporting_quote must be a verbatim excerpt of at least 40 characters from a cited source that supports that driver. "
+            "A numerical restatement is not a causal explanation. Use an empty quote when no documented driver is available. "
             "Do not call a numerical description a causal explanation. Source IDs must be drawn from supplied sources. "
             "News discovery timestamps may differ from publication dates." )},
             {"role": "user", "content": payload_json}]}, timeout=65)
@@ -71,5 +75,11 @@ def explain(payload_json, model, _api_key):
         inline_ids = set(re.findall(r"\[(S\d+)\]", item["what_changed"] + item["explanation"]))
         if not inline_ids.issubset(set(item["source_ids"])):
             continue
+        quote = " ".join(item.get("supporting_quote", "").split())
+        cited_text = [" ".join(s.get("text", "").split()) for s in payload["sources"] if s["id"] in item["source_ids"]]
+        if len(quote) < 40 or not any(quote in text for text in cited_text):
+            item["explanation"] = "The available filing and news excerpts do not establish a specific cause for this chart's pattern. The chart shows the reported figures; causal attribution would require additional evidence."
+            item["confidence"] = "low"
+            item["supporting_quote"] = ""
         validated[name] = item
     return validated

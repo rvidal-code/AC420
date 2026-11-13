@@ -54,6 +54,9 @@ def parse_inline(html):
         if len(p) < 2500 and keywords.search(p) and p not in seen:
             selected.append(p)
             seen.add(p)
+    def relevance(text):
+        return sum(bool(re.search(pattern, text, re.I)) for pattern in [r"due to|driven by|primarily", r"increased|decreased|declined|grew", r"compared (with|to)", r"revenue|margin|cash flow"]) - int(bool(re.search(r"may adversely|could adversely", text, re.I)))
+    selected.sort(key=relevance, reverse=True)
     return result, "\n".join(selected)[:18000]
 
 

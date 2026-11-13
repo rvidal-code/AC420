@@ -191,6 +191,9 @@ def main():
                     st.write(item["what_changed"])
                 st.markdown("**What explains it**")
                 st.write(item["explanation"])
+                if item.get("supporting_quote"):
+                    with st.expander("Supporting source excerpt"):
+                        st.write(item["supporting_quote"])
                 st.caption(f"AI evidence confidence: {item['confidence']}. Check the underlying sources.")
                 for source in sources:
                     if source["id"] in item["source_ids"]:
