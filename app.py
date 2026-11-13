@@ -144,8 +144,10 @@ def main():
                 if n["kind"] == "article":
                     sources.append({"id": f"S{len(sources) + 1}", **n})
             try:
+                # Bound the evidence budget so a public class demo conserves free-tier tokens.
+                ai_sources = [{**source, "text": source.get("text", "")[:(8500 if source["id"] == "S1" else 1800)]} for source in sources]
                 payload = {"company": company["title"], "period": period, "filing_date": cutoff,
-                           "comparison": prior_period, "charts": chart_data, "sources": sources,
+                           "comparison": prior_period, "charts": chart_data, "sources": ai_sources,
                            "news_window": [news_start.isoformat(), news_end.isoformat()], "news_coverage": news_note}
                 explanations = explain(json.dumps(payload, sort_keys=True), setting("GROQ_MODEL", "openai/gpt-oss-20b"), api_key)
             except Exception as error:
