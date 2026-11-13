@@ -24,7 +24,17 @@ def explain(payload_json, model, _api_key):
             "Source IDs must be drawn from supplied sources. News discovery timestamps may differ from publication dates." )},
             {"role": "user", "content": payload_json}]}, timeout=65)
     if response.status_code == 429:
-        raise ValueError("AI free-tier limit reached. Charts remain available; try explanations again later.")
+        try:
+            error_message = response.json().get("error", {}).get("message", "")
+        except ValueError:
+            error_message = ""
+        # Report useful quota diagnostics without exposing account identifiers.
+        details = []
+        for label, pattern in [("Token limit", r"Limit\s+(\d+)"), ("Requested tokens", r"Requested\s+(\d+)"), ("Retry after", r"try again in\s+([\d.]+[a-z]+)")]:
+            match = re.search(pattern, error_message, re.I)
+            if match:
+                details.append(f"{label}: {match.group(1)}")
+        raise ValueError("AI free-tier limit reached. " + "; ".join(details) + ". Charts remain available; try again later.")
     if response.status_code in (401, 403):
         raise ValueError("AI authentication failed. Check GROQ_API_KEY and model access in app Secrets.")
     if not response.ok:

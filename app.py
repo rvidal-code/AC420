@@ -133,29 +133,8 @@ def main():
     # Include URLs for all facts used, including derived quarters and older comparison periods.
     accession_numbers = {r["accn"] for p in history + [current] + ([previous] if previous else []) for rows in p["sources"].values() for r in rows}
     fact_sources = [{"accn": a, "url": f"https://www.sec.gov/Archives/edgar/data/{int(company['cik_str'])}/{a.replace('-', '')}/{a}-index.html"} for a in sorted(accession_numbers)]
-    explanations, news_items, news_note = {}, [], ""
-    if ai_enabled and api_key and chart_data:
-        with st.spinner("Gathering news and explaining your charts…"):
-            try:
-                news_items, news_note = providers.news(company["title"].split(" INC")[0].split(" CORP")[0], news_start.isoformat(), news_end.isoformat())
-            except Exception:
-                news_note = "News service unavailable. Explanations use filing evidence and chart figures only."
-            for n in news_items:
-                if n["kind"] == "article":
-                    sources.append({"id": f"S{len(sources) + 1}", **n})
-            try:
-                # Bound the evidence budget so a public class demo conserves free-tier tokens.
-                ai_sources = [{**source, "text": source.get("text", "")[:(8500 if source["id"] == "S1" else 1800)]} for source in sources]
-                payload = {"company": company["title"], "period": period, "filing_date": cutoff,
-                           "comparison": prior_period, "charts": chart_data, "sources": ai_sources,
-                           "news_window": [news_start.isoformat(), news_end.isoformat()], "news_coverage": news_note}
-                explanations = explain(json.dumps(payload, sort_keys=True), setting("GROQ_MODEL", "openai/gpt-oss-20b"), api_key)
-            except Exception as error:
-                st.warning(f"AI explanations unavailable: {error}")
-    elif ai_enabled and not api_key:
-        st.info("Charts are ready. Add GROQ_API_KEY in app Secrets to enable automatic explanations.")
-    if news_note:
-        st.caption(news_note)
+    # Show visuals immediately; news retrieval and AI must not block the charts.
+    explanation_slots = {}
     for name in selection:
         with st.container(border=True):
             st.subheader(name)
@@ -169,6 +148,36 @@ def main():
                 st.caption("Daily unadjusted closing price via Yahoo Finance / yfinance. Window: period start through filing date. Educational use; not a live quote feed.")
             if name == "Debt maturities":
                 st.caption(f"Principal repayment buckets as disclosed at {period[1]}; excludes lease payment schedules.")
+            explanation_slots[name] = st.empty()
+            if ai_enabled and api_key:
+                explanation_slots[name].caption("Preparing the evidence-based explanation…")
+    explanations, news_items, news_note = {}, [], ""
+    if ai_enabled and api_key and chart_data:
+        with st.spinner("Gathering news and explaining your charts…"):
+            try:
+                news_items, news_note = providers.news(company["title"].split(" INC")[0].split(" CORP")[0], news_start.isoformat(), news_end.isoformat())
+            except Exception:
+                news_note = "News service unavailable. Explanations use filing evidence and chart figures only."
+            for n in news_items:
+                if n["kind"] == "article":
+                    sources.append({"id": f"S{len(sources) + 1}", **n})
+            try:
+                # Bound the evidence budget so a public class demo conserves free-tier tokens.
+                ai_sources = [{**source, "text": source.get("text", "")[:(4500 if source["id"] == "S1" else 1000)]} for source in sources[:3]]
+                payload = {"company": company["title"], "period": period, "filing_date": cutoff,
+                           "comparison": prior_period, "charts": chart_data, "sources": ai_sources,
+                           "news_window": [news_start.isoformat(), news_end.isoformat()], "news_coverage": news_note}
+                explanations = explain(json.dumps(payload, sort_keys=True), setting("GROQ_MODEL", "openai/gpt-oss-20b"), api_key)
+            except Exception as error:
+                st.warning(f"AI explanations unavailable: {error}")
+    elif ai_enabled and not api_key:
+        st.info("Charts are ready. Add GROQ_API_KEY in app Secrets to enable automatic explanations.")
+    if news_note:
+        st.caption(news_note)
+    for name in selection:
+        if name not in explanation_slots:
+            continue
+        with explanation_slots[name].container():
             item = explanations.get(name)
             if item:
                 st.markdown("**What changed**")
