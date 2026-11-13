@@ -181,7 +181,14 @@ def main():
             item = explanations.get(name)
             if item:
                 st.markdown("**What changed**")
-                st.write(item["what_changed"])
+                if name == "EBITDA bridge":
+                    data = chart_data[name]
+                    st.write(f"EBITDA moved from {money(data['previous_EBITDA_USD'])} ({data['previous_period']}) to {money(data['current_EBITDA_USD'])} ({data['current_period']}).")
+                elif name == "Stock price":
+                    data = chart_data[name]
+                    st.write(f"Closing price moved from ${data['start']['close']:,.2f} ({data['start']['date']}) to ${data['end']['close']:,.2f} ({data['end']['date']}).")
+                else:
+                    st.write(item["what_changed"])
                 st.markdown("**What explains it**")
                 st.write(item["explanation"])
                 st.caption(f"AI evidence confidence: {item['confidence']}. Check the underlying sources.")

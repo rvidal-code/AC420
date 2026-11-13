@@ -21,7 +21,12 @@ def explain(payload_json, model, _api_key):
             "Respond as JSON: {\"charts\": {\"exact chart name\": {\"what_changed\": \"1 sentence\", "
             "\"explanation\": \"2-3 concise sentences with [S1] style source IDs\", \"confidence\": \"high|medium|low\", "
             "\"source_ids\": [\"S1\"]}}}. Include each supplied chart; do not include unavailable charts. "
-            "Source IDs must be drawn from supplied sources. News discovery timestamps may differ from publication dates." )},
+            "Every explanation must cite at least one supplied source ID in its text and source_ids. "
+            "S1 is the corresponding filing and chart-data source. For EBITDA, endpoints are EBITDA, never net income; "
+            "component_changes_USD are differences between periods, not absolute expenses. Do not reconstruct a net-income-to-EBITDA bridge. "
+            "If sources do not establish a cause, explicitly say the cause cannot be established from this evidence. "
+            "Do not call a numerical description a causal explanation. Source IDs must be drawn from supplied sources. "
+            "News discovery timestamps may differ from publication dates." )},
             {"role": "user", "content": payload_json}]}, timeout=65)
     if response.status_code == 429:
         try:
@@ -48,10 +53,10 @@ def explain(payload_json, model, _api_key):
         item = result["charts"].get(name)
         if not isinstance(item, dict) or not all(isinstance(item.get(k), str) for k in ("what_changed", "explanation", "confidence")):
             continue
-        if not isinstance(item.get("source_ids"), list) or any(s not in allowed for s in item["source_ids"]):
+        if not isinstance(item.get("source_ids"), list) or not item["source_ids"] or any(s not in allowed for s in item["source_ids"]):
             continue
         inline_ids = set(re.findall(r"\[(S\d+)\]", item["what_changed"] + item["explanation"]))
-        if not inline_ids.issubset(set(item["source_ids"])):
+        if not inline_ids or not inline_ids.issubset(set(item["source_ids"])):
             continue
         validated[name] = item
     return validated

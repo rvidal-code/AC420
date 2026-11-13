@@ -24,7 +24,10 @@ def build(name, history, current, previous, segments, maturities, prices):
             return None, None
         fig = go.Figure(go.Waterfall(x=data["labels"], y=[n / 1e6 for n in data["values"]],
             measure=["absolute"] + ["relative"] * 4 + ["total"], increasing=dict(marker_color=TEAL), decreasing=dict(marker_color=RED), totals=dict(marker_color=BLUE)))
-        return style(fig), data
+        return style(fig), {"previous_period": previous["end"], "previous_EBITDA_USD": previous["values"]["EBITDA"],
+                            "current_period": current["end"], "current_EBITDA_USD": current["values"]["EBITDA"],
+                            "component_changes_USD": {key: current["values"][key] - previous["values"][key] for key in ("Net income", "Interest", "Taxes", "D&A")},
+                            "meaning": "Each component is a period-over-period CHANGE, not its absolute balance. Endpoints are EBITDA, not net income."}
     if name == "Revenue segmentation":
         if not segments:
             return None, None
