@@ -187,6 +187,18 @@ def main():
                 elif name == "Stock price":
                     data = chart_data[name]
                     st.write(f"Closing price moved from ${data['start']['close']:,.2f} ({data['start']['date']}) to ${data['end']['close']:,.2f} ({data['end']['date']}).")
+                elif name == "Debt maturities":
+                    data = chart_data[name]
+                    largest = max(data, key=lambda row: row["value"])
+                    st.write(f"At {period[1]}, {money(data[0]['value'])} falls due in the next 12 months. The largest disclosed repayment bucket is {largest['maturity']} ({money(largest['value'])}).")
+                elif name == "Revenue segmentation":
+                    st.write(f"Reported revenue of {money(current['values']['Revenue'])} is divided into {len(chart_data[name])} disclosed categories for the selected period.")
+                elif name == "Free cash flow":
+                    st.write(f"Operating cash flow of {money(current['values']['Operating cash flow'])}, less capital expenditures of {money(current['values']['Capital expenditures'])}, gives free cash flow of {money(current['values']['Free cash flow'])}.")
+                elif name == "Revenue & profitability":
+                    st.write(f"For the selected period, revenue is {money(current['values']['Revenue'])} and net income is {money(current['values']['Net income'])}.")
+                elif name == "Liquidity & leverage":
+                    st.write(f"At {period[1]}, cash is {money(current['values']['Cash'])} and disclosed long-term debt including its current portion is {money(current['values']['Debt'])}.")
                 else:
                     st.write(item["what_changed"])
                 st.markdown("**What explains it**")

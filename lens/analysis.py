@@ -40,6 +40,7 @@ def explain(payload_json, model, _api_key):
             "component_changes_USD are differences between periods, not absolute expenses. Do not reconstruct a net-income-to-EBITDA bridge. "
             "If sources do not establish a cause, explicitly say the cause cannot be established from this evidence. "
             "The explanation must discuss documented operational drivers only, never repeat chart numbers or reconstruct arithmetic. "
+            "Only attribute drivers to the supplied period and comparison. Do not use annual management commentary as an explanation of a derived Q4 change, or confuse year-over-year commentary with sequential-quarter changes. "
             "supporting_quote must be a verbatim excerpt of at least 40 characters from a cited source that supports that driver. "
             "A numerical restatement is not a causal explanation. Use an empty quote when no documented driver is available. "
             "Do not call a numerical description a causal explanation. Source IDs must be drawn from supplied sources. "
